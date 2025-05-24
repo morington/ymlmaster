@@ -107,3 +107,7 @@ no-lines-before = ["local-folder"]
 
 [tool.ruff.flake8-tidy-imports]
 ban-relative-imports = "parents"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
