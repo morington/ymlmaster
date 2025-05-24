@@ -1,0 +1,32 @@
+dev:
+  postgresql:
+    host: "127.0.0.1"
+    user: null
+    password: null
+    port: null
+    db: null
+
+  redis:
+    host: "127.0.0.1"
+    port: null
+
+  application:
+    token: null
+    admin_id: null
+
+release:
+  postgresql:
+    host: "0.0.0.0"
+    user: null
+    password: null
+    port: null
+    db: null
+
+  redis:
+    host: "0.0.0.0"
+    port: null
+
+  application:
+    token: null
+    admin_id: null
+
