@@ -2,16 +2,16 @@ from pathlib import Path
 from typing import Any, TypeVar, Type
 from dataclasses import is_dataclass, fields
 from dotenv import dotenv_values
+from yarl import URL
 import yaml
-
+import os
 
 T = TypeVar("T")
 
 
 class SettingsLoader:
     """
-    Loads settings from YAML and .env, and instantiates the given config class.
-    Supports both Pydantic and dataclass-based models.
+    Loads settings from YAML and .env, injects *_url fields, and instantiates the given config class.
     """
 
     def __init__(
@@ -20,24 +20,19 @@ class SettingsLoader:
         env_path: Path,
         model_class: type,
         use_release: bool = False,
-        profile: str | None = None
+        profile: str | None = None,
+        url_templates: dict[str, str] | None = None
     ) -> None:
-        """
-        Args:
-            settings_path: Path to the YAML settings file.
-            env_path: Path to the .env file.
-            model_class: The class to populate (Pydantic or dataclass).
-            use_release: Use 'release' section if profile not provided.
-            profile: Optional profile name (e.g., 'dev', 'release').
-        """
-        self.settings_path: Path = settings_path
-        self.env_path: Path = env_path
-        self.model_class: type = model_class
-        self.profile: str = profile or ("release" if use_release else "dev")
+        self.settings_path = settings_path
+        self.env_path = env_path
+        self.model_class = model_class
+        self.profile = profile or ("release" if use_release else "dev")
+        self.url_templates = url_templates or {}
 
         self.env_data: dict[str, str] = dotenv_values(self.env_path)
         self.yaml_data: dict[str, Any] = self._load_profile_data()
         self.final_data: dict[str, Any] = self._inject_env(self.yaml_data)
+        self._inject_generated_urls()
 
     def _load_profile_data(self) -> dict[str, Any]:
         with self.settings_path.open("r", encoding="utf-8") as f:
@@ -45,11 +40,7 @@ class SettingsLoader:
 
         profile_settings = all_settings.get(self.profile)
         if not profile_settings:
-            print(
-                f"[error] Profile '{self.profile}' not found in file: `{self.settings_path}`\n\n"
-                f"Hint: pass a valid '--profile' name or use 'use_release=True'.\n"
-                f"Available sections: {', '.join(all_settings.keys())}"
-            )
+            print(f"[error] Profile '{self.profile}' not found in file: `{self.settings_path}`")
             exit(1)
 
         return profile_settings
@@ -68,22 +59,42 @@ class SettingsLoader:
                     data[key] = env_value
         return data
 
+    def _inject_generated_urls(self) -> None:
+        for section, scheme in self.url_templates.items():
+            cfg = self.final_data.get(section)
+            if not cfg:
+                continue
+
+            host = cfg.get("host", "localhost") or "localhost"
+            raw_port = cfg.get("port")
+
+            # Безопасный парсинг порта
+            port = None
+            if raw_port:
+                raw_port = raw_port.replace("127.0.0.1:", "").replace("0.0.0.0:", "")
+                try:
+                    port = int(raw_port)
+                except ValueError:
+                    print(f"[warn] Skipping invalid port for {section}: {raw_port}")
+
+            user = cfg.get("user")
+            password = cfg.get("password")
+            db_name = os.getenv(f"{section.upper()}__DB", "").strip()
+            path = f"/{db_name}" if db_name else ""
+
+            url = URL.build(
+                scheme=scheme,
+                user=user,
+                password=password,
+                host=host,
+                port=port,
+                path=path
+            )
+            self.final_data[f"{section}_url"] = str(url)
+
     def _build_dataclass(self, cls: Type[T] | T, data: dict[str, Any]) -> T:
-        """
-        Recursively constructs an instance of a dataclass from nested dictionary data.
-
-        Args:
-            cls (Type[T] | T): A dataclass type or instance to populate.
-            data (dict[str, Any]): A dictionary containing the values for fields.
-
-        Returns:
-            T: An instance of the dataclass with populated values.
-
-        Raises:
-            TypeError: If `cls` is not a dataclass type or instance.
-        """
         if not is_dataclass(cls):
-            raise TypeError(f"Expected a dataclass type or instance, got: {type(cls)}")
+            raise TypeError(f"Expected dataclass type, got: {type(cls)}")
 
         kwargs = {}
         for field in fields(cls):
@@ -95,12 +106,6 @@ class SettingsLoader:
         return cls(**kwargs)
 
     def load(self) -> Any:
-        """
-        Instantiates and returns the provided model class with loaded settings.
-
-        Returns:
-            An instance of model_class with populated fields.
-        """
         if is_dataclass(self.model_class):
             return self._build_dataclass(self.model_class, self.final_data)
         return self.model_class(**self.final_data)

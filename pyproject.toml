@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ymlmaster"
-version = "0.0.1"
+version = "0.0.2"
 description = "Powerful and clean YAML-based configuration library for Python 3.11+"
 authors = ["morington.mail@gmail.com"]
 readme = "README.md"
@@ -39,6 +39,7 @@ generate-schema = "ymlmaster.generate_schema:main"
 python = ">=3.11"
 pyyaml = "^6.0.2"
 python-dotenv = "^1.1.0"
+yarl = "^1.20.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "==8.3.5"

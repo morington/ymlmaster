@@ -5,154 +5,105 @@ from typing import Any
 
 class SchemaGenerator:
     """
-    A class for generating Python data models from a YAML settings structure.
-    Supports Pydantic and standard dataclass generation.
+    Generates settings models (Pydantic or dataclass) from a YAML config.
+    Adds *_url fields for specified sections via `url_fields`.
     """
 
-    def __init__(self, use_pydantic: bool = False, class_name: str = "Settings") -> None:
-        """
-        Args:
-            use_pydantic: If True, generate Pydantic models. Otherwise, use dataclasses.
-            class_name: The name of the root-level class to generate.
-        """
-        self.use_pydantic: bool = use_pydantic
-        self.class_name: str = class_name
+    def __init__(self, use_pydantic: bool = False, class_name: str = "Settings", url_fields: list[str] | None = None) -> None:
+        self.use_pydantic = use_pydantic
+        self.class_name = class_name
         self.class_name_cache: dict[str, str] = {}
+        self.url_fields = url_fields or []
 
         if self.use_pydantic:
             self._ensure_pydantic_installed()
 
     @staticmethod
     def _ensure_pydantic_installed() -> None:
-        """Raises an error if Pydantic is not installed when required."""
         try:
             import pydantic  # noqa
         except ImportError:
-            print(
-                "[error] Pydantic is not installed.\n\n"
-                "Hint: run `poetry add pydantic` to use --type pydantic,\n"
-                "or use `--type dataclass` to generate standard dataclasses instead."
-            )
+            print("[error] Pydantic not installed. Use `--type dataclass` or install via `poetry add pydantic`.")
             exit(1)
 
     def generate(self, settings_path: Path, output_path: Path, profile: str = "dev") -> None:
-        """
-        Generate a model file based on a given YAML profile.
-
-        Args:
-            settings_path: Path to the YAML file.
-            output_path: Path where the Python model file will be written.
-            profile: The root section name in the YAML (e.g., "dev", "release").
-        """
         import yaml
 
         with settings_path.open("r", encoding="utf-8") as f:
             all_settings: dict[str, Any] = yaml.safe_load(f)
 
-        profile_settings: dict[str, Any] | None = all_settings.get(profile)
+        profile_settings = all_settings.get(profile)
         if not profile_settings:
-            print(
-                f"[error] Profile '{profile}' not found in file: `{settings_path}`\n\n"
-                f"Hint: use '--profile <section>' to specify a valid section.\n"
-                f"Available sections: {', '.join(all_settings.keys())}"
-            )
+            print(f"[error] Profile '{profile}' not found.")
             exit(1)
 
         code: str = self._build_class_code(self.class_name, profile_settings)
         header: str = self._build_header()
         full_code: str = header + "\n\n" + code
-
         output_path.write_text(full_code, encoding="utf-8")
-        print(f"✅ Schema generated from profile '{profile}': {output_path}")
+        print(f"✅ Schema generated: {output_path}")
 
     def _build_header(self) -> str:
-        """
-        Returns:
-            Python import header string required for the generated classes.
-        """
-        lines: list[str] = ["from typing import Optional"]
-        if self.use_pydantic:
-            lines.append("from pydantic import BaseModel")
-        else:
-            lines.append("from dataclasses import dataclass")
+        lines = ["from typing import Optional"]
+        lines.append("from pydantic import BaseModel" if self.use_pydantic else "from dataclasses import dataclass")
         return "\n".join(lines)
 
     def _to_camel_case(self, name: str) -> str:
-        """
-        Converts a snake_case string to CamelCase and caches the result.
-
-        Args:
-            name: The snake_case name.
-
-        Returns:
-            CamelCase version of the name.
-        """
         if name in self.class_name_cache:
             return self.class_name_cache[name]
-        parts: list[str] = name.split('_')
-        camel: str = ''.join(word.capitalize() for word in parts)
+        camel = ''.join(part.capitalize() for part in name.split('_'))
         self.class_name_cache[name] = camel
         return camel
 
     def _build_class_code(self, name: str, data: dict[str, Any], indent: int = 0) -> str:
-        """
-        Recursively generates nested class definitions from a dictionary.
-
-        Args:
-            name: Class name (root or nested).
-            data: Dictionary structure representing fields.
-            indent: Indentation level.
-
-        Returns:
-            Full class definition as a string.
-        """
         lines: list[str] = []
         nested_blocks: list[str] = []
-        ind: str = "    " * indent
+        ind = "    " * indent
+        class_name = self._to_camel_case(name)
         field_types: dict[str, str] = {}
-
-        class_name: str = self._to_camel_case(name)
-        self.class_name_cache[name] = class_name
 
         for key, val in data.items():
             if isinstance(val, dict):
-                sub_class_name: str = self._to_camel_case(key)
-                self.class_name_cache[key] = sub_class_name
-                nested_code: str = self._build_class_code(key, val, indent=0)
+                sub_class_name = self._to_camel_case(key)
+                nested_code = self._build_class_code(key, val, indent=0)
                 nested_blocks.append(nested_code)
                 field_types[key] = sub_class_name
             else:
                 field_types[key] = "Optional[str]"
 
-        decorator: str = "@dataclass" if not self.use_pydantic else ""
-        base: str = "" if not self.use_pydantic else "(BaseModel)"
+        # Add *_url fields to root class
+        if name == self.class_name:
+            for section in self.url_fields:
+                field_types[f"{section}_url"] = "Optional[str]"
+
+        decorator = "@dataclass" if not self.use_pydantic else ""
+        base = "(BaseModel)" if self.use_pydantic else ""
 
         lines.append(f"{ind}{decorator}")
         lines.append(f"{ind}class {class_name}{base}:")
-
-        if not data:
+        if not field_types:
             lines.append(f"{ind}    pass")
         else:
-            for field_name, field_type in field_types.items():
-                lines.append(f"{ind}    {field_name}: {field_type} = None")
+            for fname, ftype in field_types.items():
+                lines.append(f"{ind}    {fname}: {ftype} = None")
 
         return "\n\n".join(nested_blocks + ["\n".join(lines)])
 
 
 def main() -> None:
-    """
-    Entry point for CLI execution.
-    Parses arguments and triggers schema generation.
-    """
     parser = argparse.ArgumentParser(description="Generate Python settings model from a YAML template.")
     parser.add_argument("--settings", required=True, help="Path to YAML file containing the settings structure.")
     parser.add_argument("--output", required=True, help="Path to output .py file.")
     parser.add_argument("--type", choices=["pydantic", "dataclass"], default="dataclass", help="Type of model to generate.")
     parser.add_argument("--profile", default="dev", help="Profile section to generate schema from (default: dev).")
+    parser.add_argument("--url-fields", nargs="*", help="Sections for which to generate *_url fields", default=[])
 
     args = parser.parse_args()
 
-    generator = SchemaGenerator(use_pydantic=(args.type == "pydantic"))
+    generator = SchemaGenerator(
+        use_pydantic=(args.type == "pydantic"),
+        url_fields=args.url_fields
+    )
     generator.generate(Path(args.settings), Path(args.output), profile=args.profile)
 
 
