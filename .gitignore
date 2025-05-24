@@ -93,3 +93,4 @@ target/
 .spyderproject
 .spyproject
 .ropeproject
+/.pypirc
