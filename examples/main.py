@@ -16,6 +16,11 @@ def main() -> None:
         # default:
         # use_release=False,
         # profile=None
+        url_templates={
+            "postgresql": "postgresql+asyncpg",
+            "redis": "redis",
+            "nats": "nats"
+        }
     )
     settings_pydantic: SettingsModelPydantic = loader_pydantic.load()
 
@@ -23,6 +28,8 @@ def main() -> None:
     print(settings_pydantic.application.admin_id)
     print(settings_pydantic.redis.port)
     print(settings_pydantic.postgresql.host)
+    print(settings_pydantic.redis_url)
+    print(settings_pydantic.postgresql_url)
 
     # Dataclass
     loader_dataclass = SettingsLoader(
@@ -31,7 +38,8 @@ def main() -> None:
         model_class=SettingsModelDataClass,
         # default:
         # use_release=False,
-        # profile=None
+        # profile=None,
+        # url_templates=None
     )
     settings_dataclass: SettingsModelDataClass = loader_dataclass.load()
 
@@ -39,6 +47,8 @@ def main() -> None:
     print(settings_dataclass.application.admin_id)
     print(settings_dataclass.redis.port)
     print(settings_dataclass.postgresql.host)
+    print(settings_dataclass.redis_url)  # None -> not schema url_templates=None
+    print(settings_dataclass.postgresql_url)  # None -> not schema url_templates=None
 
 
 if __name__ == "__main__":
