@@ -1,0 +1,95 @@
+# IDE
+.idea/
+!.idea/codeStyles
+!.idea/runConfigurations
+
+# Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+MANIFEST
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# PyInstaller
+*.spec
+
+# Test & coverage
+htmlcov/
+.tox/
+.nox/
+.coverage*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.pytest_cache/
+
+# Hypothesis
+.hypothesis/
+
+# Ruff
+.ruff_cache/
+
+# Type checkers
+.mypy_cache/
+.pytype/
+.pyre/
+
+# LSP config
+pyrightconfig.json
+.dmypy.json
+dmypy.json
+
+# Jupyter/IPython
+.ipynb_checkpoints/
+profile_default/
+ipython_config.py
+
+# Django/Flask
+*.log
+local_settings.py
+db.sqlite3*
+instance/
+.webassets-cache
+
+# Poetry
+.poetry/
+poetry.toml
+# For dev lib ignore!
+poetry.lock
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+__pypackages__/
+
+# Docs
+docs/_build/
+site/
+
+# Tools
+.pybuilder/
+target/
+.scrapy/
+.spyderproject
+.spyproject
+.ropeproject

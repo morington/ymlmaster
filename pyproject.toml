@@ -1,0 +1,108 @@
+[tool.poetry]
+name = "ymlmaster"
+version = "0.0.1"
+description = "Powerful and clean YAML-based configuration library for Python 3.12+"
+authors = ["morington.mail@gmail.com"]
+readme = "README.md"
+license = "MIT"
+packages = [{ include = "ymlmaster", from = "src" }]
+classifiers = [
+    # Development status
+    "Development Status :: 4 - Beta",
+
+    # Target audience
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Information Technology",
+
+    # Type of license
+    "License :: OSI Approved :: MIT License",
+
+    # Support Python 3.12+
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3",
+
+    # Support OS
+    "Operating System :: OS Independent",
+
+    # Categories / themes
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Installation/Setup",
+    "Topic :: Utilities",
+    "Topic :: Configuration Management",
+]
+
+[tool.poetry.scripts]
+generate-schema = "ymlmaster.generate_schema:main"
+
+[tool.poetry.dependencies]
+python = ">=3.12,<4.0"
+pyyaml = "^6.0.2"
+python-dotenv = "^1.1.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "==8.3.5"
+pytest-asyncio = "==0.25.3"
+ruff = "==0.11.1"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+filterwarnings = [
+    "error",
+    "ignore::pytest.PytestDeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 160
+target-version = "py312"
+src = ["src"]
+
+format.indent-style = "space"
+indent-width = 4
+
+include = ["src/**py", "tests/**py"]
+exclude = []
+
+select = ["ALL"]
+ignore = [
+    "ARG",
+    "ANN",
+    "D212",
+    "D400",
+    "D401",
+    "D415",
+    "D210",
+    "D104",
+    "D100",
+    "D107",
+    "EM101",
+    "EM102",
+    "PT001",
+    "PT023",
+    "SIM108",
+    "SIM114",
+    "TRY003",
+    "PLW2901",
+    "RET505",
+    "PLR0913",
+    "UP038",
+    "TCH001",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    "G004",
+    "INP001",
+    "UP007",
+    "PYI013",
+    "PIE790",
+]
+
+per-file-ignores = { "tests/*" = ["TID252", "PLR2004", "S101", "SLF001"] }
+
+[tool.ruff.isort]
+no-lines-before = ["local-folder"]
+
+[tool.ruff.flake8-tidy-imports]
+ban-relative-imports = "parents"
