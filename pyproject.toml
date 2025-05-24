@@ -7,30 +7,30 @@ readme = "README.md"
 license = "MIT"
 packages = [{ include = "ymlmaster", from = "src" }]
 classifiers = [
-    # Development status
+    # Статус разработки
     "Development Status :: 4 - Beta",
 
-    # Target audience
+    # Целевая аудитория
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
     "Intended Audience :: Information Technology",
 
-    # Type of license
+    # Лицензия
     "License :: OSI Approved :: MIT License",
 
-    # Support Python 3.12+
-    "Programming Language :: Python :: 3.12",
+    # Поддерживаемые версии Python
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
 
-    # Support OS
+    # Поддерживаемые операционные системы
     "Operating System :: OS Independent",
 
-    # Categories / themes
+    # Тематика
     "Topic :: Software Development :: Libraries :: Python Modules",
-    "Topic :: System :: Installation/Setup",
     "Topic :: Utilities",
-    "Topic :: Configuration Management",
+    "Topic :: System :: Systems Administration"
 ]
+
 
 [tool.poetry.scripts]
 generate-schema = "ymlmaster.generate_schema:main"
