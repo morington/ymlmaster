@@ -28,10 +28,12 @@ class SchemaGenerator:
         try:
             import pydantic  # noqa
         except ImportError:
-            raise ImportError(
-                "Pydantic is required but not installed. "
-                "Install it via `pip install pydantic`, or use `--type dataclass`."
+            print(
+                "[error] Pydantic is not installed.\n\n"
+                "Hint: run `poetry add pydantic` to use --type pydantic,\n"
+                "or use `--type dataclass` to generate standard dataclasses instead."
             )
+            exit(1)
 
     def generate(self, settings_path: Path, output_path: Path, profile: str = "dev") -> None:
         """
