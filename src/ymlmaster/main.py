@@ -30,6 +30,8 @@ class SettingsLoader:
         self.url_templates = url_templates or {}
 
         self.env_data: dict[str, str] = dotenv_values(self.env_path)
+        os.environ.update(self.env_data)  # 👈 ключевая строка
+
         self.yaml_data: dict[str, Any] = self._load_profile_data()
         self.final_data: dict[str, Any] = self._inject_env(self.yaml_data)
         self._inject_generated_urls()
@@ -68,7 +70,6 @@ class SettingsLoader:
             host = cfg.get("host", "localhost") or "localhost"
             raw_port = cfg.get("port")
 
-            # Безопасный парсинг порта
             port = None
             if raw_port:
                 raw_port = raw_port.replace("127.0.0.1:", "").replace("0.0.0.0:", "")
