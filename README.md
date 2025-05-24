@@ -32,6 +32,7 @@ poetry run generate-schema
   --output settings_model.py
   --type dataclass # or --type pydantic,  default: dataclass
   --profile dev # or custom name block,  default: dev
+  --url-fields postgresql redis # added url services
 ```
 
 This will generate Python code like:
@@ -60,6 +61,8 @@ class Settings:
     postgresql: Postgresql = None
     redis: Redis = None
     application: Application = None
+    postgresql_url: Optional[str] = None
+    redis_url: Optional[str] = None
 ```
 
 ## Using the Loader
@@ -76,7 +79,12 @@ loader = SettingsLoader(
     env_path=Path(".env"),
     model_class=Settings,
     use_release=False, # true - release block, false - dev
-    profile=None # specify the exact loading block
+    profile=None, # specify the exact loading block
+    url_templates={
+        "postgresql": "postgresql+asyncpg",
+        "redis": "redis",
+        "nats": "nats"
+    } # url generation instructions   <block name>:<circuit name>
 )
 
 config = loader.load()

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ymlmaster"
-version = "0.0.2"
+version = "0.0.2.1"
 description = "Powerful and clean YAML-based configuration library for Python 3.11+"
 authors = ["morington.mail@gmail.com"]
 readme = "README.md"
