@@ -73,7 +73,7 @@ poetry.toml
 poetry.lock
 
 # Environments
-.env
+# .env
 .venv
 env/
 venv/
