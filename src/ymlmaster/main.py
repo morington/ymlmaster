@@ -1,8 +1,11 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar, Type
 from dataclasses import is_dataclass, fields
 from dotenv import dotenv_values
 import yaml
+
+
+T = TypeVar("T")
 
 
 class SettingsLoader:
@@ -65,17 +68,23 @@ class SettingsLoader:
                     data[key] = env_value
         return data
 
-    def _build_dataclass(self, cls: type, data: dict[str, Any]) -> Any:
+    def _build_dataclass(self, cls: Type[T] | T, data: dict[str, Any]) -> T:
         """
-        Recursively constructs a dataclass from nested dictionary data.
+        Recursively constructs an instance of a dataclass from nested dictionary data.
 
         Args:
-            cls: Dataclass type to instantiate.
-            data: Dictionary with values.
+            cls (Type[T] | T): A dataclass type or instance to populate.
+            data (dict[str, Any]): A dictionary containing the values for fields.
 
         Returns:
-            Instance of the dataclass.
+            T: An instance of the dataclass with populated values.
+
+        Raises:
+            TypeError: If `cls` is not a dataclass type or instance.
         """
+        if not is_dataclass(cls):
+            raise TypeError(f"Expected a dataclass type or instance, got: {type(cls)}")
+
         kwargs = {}
         for field in fields(cls):
             value = data.get(field.name)
