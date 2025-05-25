@@ -101,9 +101,10 @@ print(config.application.admin_id)
 - `profile` - _(str)_ - Name of the block in the YAML configuration schema which configuration data to take (_example: dev, release, stage, development_) The default is `dev`.
 - `url_templates` - _(dict)_ - Dictionary schema for generating URL services (_example: postgresql, redis, nats, celery, rabbitmq, ..._)
 ---
-{\* The `use_release` parameter is used to automatically determine where the project is launched.
+\* The `use_release` parameter is used to automatically determine where the project is launched.
 I use the following method: on the local machine there is a file `.developer` which is located in `.gitignore`, in `SettingsLoader` I write `use_release=not Path(‘.developer’)`, it means, if the file is not found - it will be `True` and since `profile` is not specified, the block `release` will be automatically pulled up. If the file is found, so we are on a local machine in development mode, it will be `False` and therefore the `dev` configuration will be pulled.
 This is handy to use when you have one clear configuration for development and one for your sell.
+
 ## Environment Variable Override Behavior
 
 - Values from `.env` are injected **only if the YAML value is `null`**
