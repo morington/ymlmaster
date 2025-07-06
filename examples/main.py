@@ -1,12 +1,19 @@
 from pathlib import Path
 
-from ymlmaster import SettingsLoader
+from ymlmaster.main import SettingsLoader
 
 from settings_model_pydantic import Settings as SettingsModelPydantic
 from settings_model_dataclass import Settings as SettingsModelDataClass
 
 
 def main() -> None:
+    # aliases map for faster implementation (or library testing) in the existing configuration
+    ALIASES_MAP = {
+        'PGUSER': 'POSTGRESQL__USER',
+        'PGPASSWORD': 'POSTGRESQL__PASSWORD',
+        'PGPORT': 'POSTGRESQL__PORT',
+        'PGDB': 'POSTGRESQL__DB',
+    }
 
     # Pydantic Model
     loader_pydantic = SettingsLoader(
@@ -20,7 +27,8 @@ def main() -> None:
             "postgresql": "postgresql+asyncpg",
             "redis": "redis",
             "nats": "nats"
-        }
+        },
+        env_alias_map=ALIASES_MAP
     )
     settings_pydantic: SettingsModelPydantic = loader_pydantic.load()
 
@@ -39,7 +47,8 @@ def main() -> None:
         # default:
         # use_release=False,
         # profile=None,
-        # url_templates=None
+        # url_templates=None,
+        # env_alias_map=ALIASES_MAP
     )
     settings_dataclass: SettingsModelDataClass = loader_dataclass.load()
 

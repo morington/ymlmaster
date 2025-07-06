@@ -21,16 +21,30 @@ class SettingsLoader:
         model_class: type,
         use_release: bool = False,
         profile: str | None = None,
-        url_templates: dict[str, str] | None = None
+        url_templates: dict[str, str] | None = None,
+        env_alias_map: dict[str, str] | None = None,
     ) -> None:
         self.settings_path = settings_path
         self.env_path = env_path
         self.model_class = model_class
         self.profile = profile or ("release" if use_release else "dev")
-        self.url_templates = url_templates or {}
+        self.url_templates = url_templates or dict()
+        self.env_alias_map = env_alias_map or dict()
 
         self.env_data: dict[str, str] = dotenv_values(self.env_path)
-        os.environ.update(self.env_data)  # 👈 ключевая строка
+
+        if self.env_alias_map:
+            aliased_env_data = {
+                **{
+                    nested: self.env_data[flat]
+                    for flat, nested in self.env_alias_map.items()
+                    if flat in self.env_data and nested not in self.env_data
+                },
+                **self.env_data,
+            }
+            os.environ.update(aliased_env_data)
+        else:
+            os.environ.update(self.env_data)
 
         self.yaml_data: dict[str, Any] = self._load_profile_data()
         self.final_data: dict[str, Any] = self._inject_env(self.yaml_data)

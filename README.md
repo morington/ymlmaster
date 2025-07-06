@@ -84,7 +84,8 @@ loader = SettingsLoader(
         "postgresql": "postgresql+asyncpg",
         "redis": "redis",
         "nats": "nats"
-    } # url generation instructions   <block name>:<circuit name>
+    }, # url generation instructions   <block name>:<circuit name>
+    env_alias_map={"OLD_NAME": "NEW__NAME"}
 )
 
 config = loader.load()
@@ -100,6 +101,7 @@ print(config.application.admin_id)
 - `use_release` - _(bool)_ - Parameter to automatically define dev/release configuration, more details below*
 - `profile` - _(str)_ - Name of the block in the YAML configuration schema which configuration data to take (_example: dev, release, stage, development_) The default is `dev`.
 - `url_templates` - _(dict)_ - Dictionary schema for generating URL services (_example: postgresql, redis, nats, celery, rabbitmq, ..._)
+- `env_alias_map` - _(dict)_ - Aliases map for faster implementation (or library testing) in the existing configuration
 ---
 \* The `use_release` parameter is used to automatically determine where the project is launched.
 I use the following method: on the local machine there is a file `.developer` which is located in `.gitignore`, in `SettingsLoader` I write `use_release=not Path(‘.developer’)`, it means, if the file is not found - it will be `True` and since `profile` is not specified, the block `release` will be automatically pulled up. If the file is found, so we are on a local machine in development mode, it will be `False` and therefore the `dev` configuration will be pulled.
