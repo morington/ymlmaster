@@ -31,7 +31,7 @@ class SettingsLoader:
         self.url_templates = url_templates or dict()
         self.env_alias_map = env_alias_map or dict()
 
-        self.env_data: dict[str, str] = dotenv_values(self.env_path)
+        self.env_data: dict[str, str] = {**dotenv_values(self.env_path), **os.environ}
 
         if self.env_alias_map:
             aliased_env_data = {
@@ -94,7 +94,7 @@ class SettingsLoader:
 
             user = cfg.get("user")
             password = cfg.get("password")
-            db_name = os.getenv(f"{section.upper()}__DB", "").strip()
+            db_name = cfg.get("db") or os.getenv(f"{section.upper()}__DB", "").strip()
             path = f"/{db_name}" if db_name else ""
 
             url = URL.build(
