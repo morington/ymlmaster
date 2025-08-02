@@ -1,6 +1,6 @@
 dev:
   postgresql:
-    host: "127.0.0.1"
+    host: null
     user: null
     password: null
     port: null
@@ -13,6 +13,7 @@ dev:
   application:
     token: null
     admin_id: null
+    s: null
 
 release:
   postgresql:

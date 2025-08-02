@@ -23,11 +23,13 @@ class SettingsLoader:
         profile: str | None = None,
         url_templates: dict[str, str] | None = None,
         env_alias_map: dict[str, str] | None = None,
+        dev_block: str = "dev",
+        release_block: str = "release",
     ) -> None:
         self.settings_path = settings_path
         self.env_path = env_path
         self.model_class = model_class
-        self.profile = profile or ("release" if use_release else "dev")
+        self.profile = profile or (release_block if use_release else dev_block)
         self.url_templates = url_templates or dict()
         self.env_alias_map = env_alias_map or dict()
 
@@ -81,31 +83,51 @@ class SettingsLoader:
             if not cfg:
                 continue
 
-            host = cfg.get("host", "localhost") or "localhost"
-            raw_port = cfg.get("port")
+            # Parse all values into lists (comma-separated)
+            def parse_list(val: str | None) -> list[str]:
+                if not val:
+                    return []
+                return [v.strip() for v in val.split(",") if v.strip()]
 
-            port = None
-            if raw_port:
-                raw_port = raw_port.replace("127.0.0.1:", "").replace("0.0.0.0:", "")
+            hosts = parse_list(cfg.get("host"))
+            users = parse_list(cfg.get("user"))
+            passwords = parse_list(cfg.get("password"))
+            ports = parse_list(cfg.get("port"))
+            dbs = parse_list(cfg.get("db") or os.getenv(f"{section.upper()}__DB", ""))
+
+            urls = []
+            for i in range(len(hosts)):
+                host = hosts[i]
+                user = users[i] if i < len(users) else users[0] if users else None
+                password = passwords[i] if i < len(passwords) else passwords[0] if passwords else None
+                db_name = dbs[i] if i < len(dbs) else dbs[0] if dbs else None
+                raw_port = ports[i] if i < len(ports) else ports[0] if ports else None
+
+                port: int | None = None
+                if raw_port:
+                    raw_port = raw_port.strip().replace("127.0.0.1:", "").replace("0.0.0.0:", "")
+                    try:
+                        port = int(raw_port)
+                    except ValueError:
+                        print(f"[warn] Invalid port '{raw_port}' for {section}, skipping.")
+
+                path = f"/{db_name}" if db_name else ""
+
                 try:
-                    port = int(raw_port)
-                except ValueError:
-                    print(f"[warn] Skipping invalid port for {section}: {raw_port}")
+                    url = URL.build(
+                        scheme=scheme,
+                        user=user,
+                        password=password,
+                        host=host,
+                        port=port,
+                        path=path
+                    )
+                    urls.append(str(url))
+                except Exception as e:
+                    print(f"[warn] Failed to build URL for {section}: {e}")
 
-            user = cfg.get("user")
-            password = cfg.get("password")
-            db_name = cfg.get("db") or os.getenv(f"{section.upper()}__DB", "").strip()
-            path = f"/{db_name}" if db_name else ""
-
-            url = URL.build(
-                scheme=scheme,
-                user=user,
-                password=password,
-                host=host,
-                port=port,
-                path=path
-            )
-            self.final_data[f"{section}_url"] = str(url)
+            if urls:
+                self.final_data[f"{section}_url"] = urls if len(urls) > 1 else urls[0]
 
     def _build_dataclass(self, cls: Type[T] | T, data: dict[str, Any]) -> T:
         if not is_dataclass(cls):

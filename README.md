@@ -1,113 +1,207 @@
 # ymlmaster
 
-**ymlmaster** is a configuration loading utility for Python 3.11+. It provides a unified interface for loading deeply structured YAML configuration files (optionally combined with `.env` overrides) into statically typed Python classes using either `dataclass` or `pydantic`.
+**ymlmaster** is a configuration loading utility for Python 3.12+. It provides a unified interface for loading deeply structured YAML configuration files (optionally combined with `.env` overrides) into statically typed Python classes using either `dataclass` or `pydantic`.
+
+---
 
 ## Features
 
 - Schema generation from YAML into `@dataclass` or `Pydantic` models
 - Nested structures supported automatically
-- Optional `.env` merging with environment variable fallback
+- Preserves docstrings, base class inheritance, and field customizations during regeneration
+- `.env` merging with environment variable fallback (and alias remapping support)
+- URL field generation (`*_url`) based on structured service info (`host`, `port`, etc.)
+- Smart handling of comma-separated env vars to generate multiple URLs
 - Profile support (e.g., `dev`, `release`)
 - CLI generator for schema models
 
-## Installation
+---
 
-Installation is done in the project using `pip` or `poetry`:
+## Installation
 
 ```bash
 pip install ymlmaster
-```
-
-```bash
+# or
 poetry add ymlmaster
 ```
 
-## Model Generation CLI
+---
 
-To generate data models from a YAML configuration file:
+## Schema Example
 
-```bash
-poetry run generate-schema
-  --settings settings.yml
-  --output settings_model.py
-  --type dataclass # or --type pydantic,  default: dataclass
-  --profile dev # or custom name block,  default: dev
-  --url-fields postgresql redis # added url services
+Example YAML:
+
+```yaml
+dev:
+  postgresql:
+    host: null
+    user: null
+    password: null
+    port: null
+    db: null
+
+  redis:
+    host: "127.0.0.1"
+    port: null
+
+  application:
+    token: null
+    admin_id: null
 ```
 
-This will generate Python code like:
+Example .env:
+
+```env
+POSTGRESQL__USER=user_pg
+POSTGRESQL__PASSWORD=password_pg
+POSTGRESQL__PORT=5432,2345
+POSTGRESQL__HOST=localhost,198.168.0.101
+APPLICATION__TOKEN=123456:geJhasfjJD2f
+APPLICATION__ADMIN_ID=12345
+```
+
+---
+
+## Model Generation CLI
+
+```bash
+poetry run generate-schema \
+  --settings settings.yml \
+  --output settings_model.py \
+  --type dataclass \
+  --profile dev \
+  --urls postgresql redis
+```
+
+This will generate (preserving comments, docstrings, fields, and base classes):
 
 ```python
 @dataclass
 class Postgresql:
     host: Optional[str] = None
     user: Optional[str] = None
-    password: Optional[str] = None
-    port: Optional[str] = None
-    db: Optional[str] = None
-
-@dataclass
-class Redis:
-    host: Optional[str] = None
-    port: Optional[str] = None
-
-@dataclass
-class Application:
-    token: Optional[str] = None
-    admin_id: Optional[str] = None
+    ...
 
 @dataclass
 class Settings:
     postgresql: Postgresql = None
-    redis: Redis = None
-    application: Application = None
-    postgresql_url: Optional[str] = None
-    redis_url: Optional[str] = None
+    postgresql_url: Optional[str | list[str]] = None
+    redis_url: Optional[str | list[str]] = None
 ```
 
-## Using the Loader
-
-You can then load values from `settings.yml` and `.env` into your model:
+Same works with:
 
 ```python
-from pathlib import Path
+class Postgresql(BaseModel): ...
+class Settings(BaseModel): ...
+```
+
+---
+
+## How It Works
+
+Block-based configuration:
+
+- YAML supports separate config blocks like `dev`, `release`, `stage`, etc.
+- `--profile dev` chooses which one to load
+- Default is `dev`
+
+You can automate environment selection via:
+
+```python
+use_release = not Path(".developer").exists()
+loader = SettingsLoader(..., use_release=use_release)
+```
+
+This assumes:
+- `.developer` exists on local machines (and ignored via `.gitignore`)
+- When not found → production (auto picks `release`)
+
+---
+
+## SettingsLoader Parameters
+
+| Parameter        | Type               | Description                                                                 |
+|------------------|--------------------|-----------------------------------------------------------------------------|
+| settings_path    | Path               | Path to the YAML schema (e.g. settings.yml)                                |
+| env_path         | Path               | Path to .env file (merged with os.environ)                                 |
+| model_class      | type               | Pydantic or dataclass class to load into                                   |
+| use_release      | bool               | If True and profile not set, auto-uses `release_block`                     |
+| profile          | str                | Explicit profile block in YAML to use (e.g. dev, production, staging)      |
+| url_templates    | dict[str, str]     | Dict of { section: scheme } to build *_url fields                          |
+| env_alias_map    | dict[str, str]     | Flat → nested env key remapping (e.g. PGUSER → POSTGRESQL__USER)           |
+| dev_block        | str                | Custom name for development profile (default: `"dev"`)                     |
+| release_block    | str                | Custom name for release profile (default: `"release"`)                     |
+
+---
+
+## Smart URL Generation
+
+With `.env` like:
+
+```env
+POSTGRESQL__HOST=localhost,10.0.0.2
+POSTGRESQL__USER=user1,user2
+POSTGRESQL__PORT=5432,5433
+```
+
+and:
+
+```python
+url_templates = {
+  "postgresql": "postgresql+asyncpg"
+}
+```
+
+`Settings.postgresql_url` becomes:
+
+```python
+[
+  "postgresql+asyncpg://user1:...@localhost:5432/dbname",
+  "postgresql+asyncpg://user2:...@10.0.0.2:5433/dbname"
+]
+```
+
+You can mix single and multiple values — host count defines length of list.
+
+---
+
+## Example Usage
+
+```python
 from ymlmaster import SettingsLoader
-from <settings-model> import Settings
+from settings_model_pydantic import Settings
+
+ALIASES_MAP = {
+    "PGUSER": "POSTGRESQL__USER",
+    "PGPASSWORD": "POSTGRESQL__PASSWORD",
+    "PGPORT": "POSTGRESQL__PORT",
+    "PGDB": "POSTGRESQL__DB",
+}
 
 loader = SettingsLoader(
     settings_path=Path("settings.yml"),
     env_path=Path(".env"),
     model_class=Settings,
-    use_release=False, # true - release block, false - dev
-    profile=None, # specify the exact loading block
+    use_release=False,
+    profile=None,
     url_templates={
         "postgresql": "postgresql+asyncpg",
-        "redis": "redis",
-        "nats": "nats"
-    }, # url generation instructions   <block name>:<circuit name>
-    env_alias_map={"OLD_NAME": "NEW__NAME"}
+        "redis": "redis"
+    },
+    env_alias_map=ALIASES_MAP,
+    dev_block="dev",             # you can change to "development"
+    release_block="release",     # you can change to "production"
 )
 
-config = loader.load()
-
-print(config.redis.host)
-print(config.application.admin_id)
+cfg = loader.load()
+print(cfg.redis_url)
+print(cfg.postgresql_url)
 ```
 
-### Parameter Description:
-- `settings_path` - _(pathlib.Path)_ - Path to the file with the YAML schema of the configuration, in my case `settings.yml`
-- `env_path` - _(pathlib.Path)_ - Path to the `.env` file that contains all the data for the configuration
-- `model_class` - _(dataclasses.dataclass | pydantic.BaseModel)_ - The generated class from the YAML schema of the configuration
-- `use_release` - _(bool)_ - Parameter to automatically define dev/release configuration, more details below*
-- `profile` - _(str)_ - Name of the block in the YAML configuration schema which configuration data to take (_example: dev, release, stage, development_) The default is `dev`.
-- `url_templates` - _(dict)_ - Dictionary schema for generating URL services (_example: postgresql, redis, nats, celery, rabbitmq, ..._)
-- `env_alias_map` - _(dict)_ - Aliases map for faster implementation (or library testing) in the existing configuration
 ---
-\* The `use_release` parameter is used to automatically determine where the project is launched.
-I use the following method: on the local machine there is a file `.developer` which is located in `.gitignore`, in `SettingsLoader` I write `use_release=not Path(‘.developer’)`, it means, if the file is not found - it will be `True` and since `profile` is not specified, the block `release` will be automatically pulled up. If the file is found, so we are on a local machine in development mode, it will be `False` and therefore the `dev` configuration will be pulled.
-This is handy to use when you have one clear configuration for development and one for your sell.
 
-## Environment Variable Override Behavior
+## Docker Compatibility
 
 - Values from `.env` are injected **only if the YAML value is `null`**
 - Nested overrides use `__` as separator:

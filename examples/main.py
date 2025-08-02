@@ -1,13 +1,13 @@
 from pathlib import Path
-
 from ymlmaster.main import SettingsLoader
 
+# Сгенерированные модели (одна на pydantic, другая на dataclass)
 from settings_model_pydantic import Settings as SettingsModelPydantic
 from settings_model_dataclass import Settings as SettingsModelDataClass
 
 
 def main() -> None:
-    # aliases map for faster implementation (or library testing) in the existing configuration
+    # Алиасы для переменных окружения -> YAML ключей
     ALIASES_MAP = {
         'PGUSER': 'POSTGRESQL__USER',
         'PGPASSWORD': 'POSTGRESQL__PASSWORD',
@@ -15,49 +15,44 @@ def main() -> None:
         'PGDB': 'POSTGRESQL__DB',
     }
 
-    # Pydantic Model
+    # === Пример использования с Pydantic ===
     loader_pydantic = SettingsLoader(
         settings_path=Path("settings.yml"),
         env_path=Path(".env"),
         model_class=SettingsModelPydantic,
-        # default:
-        # use_release=False,
-        # profile=None
         url_templates={
             "postgresql": "postgresql+asyncpg",
             "redis": "redis",
-            "nats": "nats"
+            "nats": "nats",
         },
-        env_alias_map=ALIASES_MAP
+        env_alias_map=ALIASES_MAP,
+        dev_block="dev",
     )
     settings_pydantic: SettingsModelPydantic = loader_pydantic.load()
 
-    print("Results model pydantic:")
-    print(settings_pydantic.application.admin_id)
-    print(settings_pydantic.redis.port)
-    print(settings_pydantic.postgresql.host)
-    print(settings_pydantic.redis_url)
-    print(settings_pydantic.postgresql_url)
+    print("=== Results: Pydantic ===")
+    print("Application admin_id:", settings_pydantic.application.admin_id)
+    print("Redis port:", settings_pydantic.redis.port)
+    print("PostgreSQL host:", settings_pydantic.postgresql.host)
+    print("Redis URL:", settings_pydantic.redis_url)
+    print("PostgreSQL URL(s):", settings_pydantic.postgresql_url)  # может быть str или list[str]
 
-    # Dataclass
+    # === Пример использования с Dataclass ===
     loader_dataclass = SettingsLoader(
         settings_path=Path("settings.yml"),
         env_path=Path(".env"),
         model_class=SettingsModelDataClass,
-        # default:
-        # use_release=False,
-        # profile=None,
-        # url_templates=None,
-        # env_alias_map=ALIASES_MAP
+        # Без url_templates — *_url поля не будут заполняться
+        env_alias_map=ALIASES_MAP,
     )
     settings_dataclass: SettingsModelDataClass = loader_dataclass.load()
 
-    print("\nResults model dataclass:")
-    print(settings_dataclass.application.admin_id)
-    print(settings_dataclass.redis.port)
-    print(settings_dataclass.postgresql.host)
-    print(settings_dataclass.redis_url)  # None -> not schema url_templates=None
-    print(settings_dataclass.postgresql_url)  # None -> not schema url_templates=None
+    print("\n=== Results: Dataclass ===")
+    print("Application admin_id:", settings_dataclass.application.admin_id)
+    print("Redis port:", settings_dataclass.redis.port)
+    print("PostgreSQL host:", settings_dataclass.postgresql.host)
+    print("Redis URL:", settings_dataclass.redis_url)  # -> None (не задан template)
+    print("PostgreSQL URL:", settings_dataclass.postgresql_url)  # -> None (аналогично)
 
 
 if __name__ == "__main__":
