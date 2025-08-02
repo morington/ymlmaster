@@ -141,6 +141,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Generate Python settings model from a YAML template.")
     parser.add_argument("--settings", required=True, help="Path to YAML file containing the settings structure.")
     parser.add_argument("--output", required=True, help="Path to output .py file.")
+    parser.add_argument("--clsname", default="Settings", help="Name class settings")
     parser.add_argument("--type", choices=["pydantic", "dataclass"], default="dataclass", help="Type of model to generate.")
     parser.add_argument("--profile", default="dev", help="Profile section to generate schema from (default: dev).")
     parser.add_argument("--urls", nargs="*", help="Sections for which to generate *_url fields", default=[])
@@ -149,7 +150,8 @@ def main() -> None:
 
     generator = SchemaGenerator(
         use_pydantic=(args.type == "pydantic"),
-        urls=args.urls
+        urls=args.urls,
+        class_name=args.clsname
     )
     generator.generate(Path(args.settings), Path(args.output), profile=args.profile)
 
